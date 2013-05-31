@@ -1,0 +1,262 @@
+#!/usr/bin/perl -w
+#
+# kernel-cleaner - remove old kernels
+# Copyright (C) 2011  Stephane Galland <galland@arakhne.org>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; see the file COPYING.  If not, write to
+# the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+# Boston, MA 02111-1307, USA.
+# 
+
+use constant VERSION => "6.2";
+
+use strict;
+use File::Basename;
+use File::Spec;
+use File::Path;
+use Getopt::Long;
+use Data::Dumper;
+
+use constant TRUE => (1==1);
+use constant FALSE => (1==0);
+
+my $PERLSCRIPTDIR ;
+my $PERLSCRIPTNAME ;
+my $LAUNCHINGNAME ;
+{
+	BEGIN{
+	  # Where is this script?
+	  $PERLSCRIPTDIR = "$0";
+	  $LAUNCHINGNAME = basename("$0");
+	  my $scriptdir = dirname( $PERLSCRIPTDIR );
+	  while ( -e $PERLSCRIPTDIR && -l $PERLSCRIPTDIR ) {
+	    $PERLSCRIPTDIR = readlink($PERLSCRIPTDIR);
+	    if ( substr( $PERLSCRIPTDIR, 0, 1 ) eq '.' ) {
+	      $PERLSCRIPTDIR = File::Spec->catfile( $scriptdir, "$PERLSCRIPTDIR" ) ;
+	    }
+	    $scriptdir = dirname( $PERLSCRIPTDIR );
+	  }
+	  $PERLSCRIPTNAME = basename( $PERLSCRIPTDIR ) ;
+	  $PERLSCRIPTDIR = dirname( $PERLSCRIPTDIR ) ;
+	  $PERLSCRIPTDIR = File::Spec->rel2abs( "$PERLSCRIPTDIR" );
+	  # Push the path where the script is to retreive the arakhne.org packages
+	  push(@INC,"$PERLSCRIPTDIR");
+	  push(@INC,File::Spec->catfile("$PERLSCRIPTDIR","pm"));
+	}
+}
+
+my %config = (
+	'CONFIG_FILE' => '/etc/default/kernel-cleaner',
+	#'CONFIG_FILE' => File::Spec->catfile($PERLSCRIPTDIR,'..','debian','kernel-cleaner.default'),
+	'KERNEL_PACKAGE' => "linux-image",
+	'ADDITIONAL_PACKAGES' => [ 'linux-headers' ],
+	);
+
+sub usage() {
+    print "usage:\n";
+    print "\tkernel-cleaner [--version] [--config]\n";
+    print "\t               [--list]\n";
+    print "\t               [--rmlist] [--testremove] [--remove]\n";
+    exit(1);
+}
+
+sub getInstalledPackages($) {
+	my $packagePattern = shift || die('no package pattern');
+	my %candidates = ();
+	my @list = split(/[\n\r]+/, `dpkg-query --showformat '\${Package}\\t\${Status}\\n' --show '$packagePattern' 2>/dev/null`);
+	foreach my $package (@list) {
+		if ($package && $package =~ /^\Q$config{'KERNEL_PACKAGE'}\E-([0-9.]+)\-([0-9.]+)\-([^\s]+)\t(.+)$/gi) {
+			my ($kversion, $release, $type, $status) = ($1, $2, $3, $4);
+			my $full = "$kversion-$release";
+
+			if ($status =~ /ok\s+installed/) {
+				$candidates{"$type"}{"$full"}{'kversion'} = $kversion;
+				$candidates{"$type"}{"$full"}{'release'} = $release;
+				$candidates{"$type"}{"$full"}{'status'} = $status;
+				$candidates{"$type"}{"$full"}{'type'} = $type;
+				$candidates{"$type"}{"$full"}{'full'} = "$full-$type";
+			}
+		}
+	}
+	return %candidates;
+}
+
+sub parseConfigFile($$) {
+	my $filename = shift || die("no config filename");
+	my $config = shift || {};
+	local *CONFIG;
+	open(*CONFIG, "< $filename") or die("$filename: $!\n");
+	while (my $line=<CONFIG>) {
+		if ($line =~ /^\s*([_a-zA-Z9-9]+)(?:\[([0-9]+)\])?=(.*?)\s*$/) {
+			my ($name,$idx,$value) = ($1||'',$2,$3||'');
+			if ($value =~ /^\"(.*)\"$/) {
+				$value = $1 || '';
+				$value =~ s/\\(.)/$1/g;
+			}
+			elsif ($value =~ /^\'(.*)\'$/) {
+				$value = $1 || '';
+				$value =~ s/\\(.)/$1/g;
+			}
+			if (defined($idx)) {
+				$config->{"$name"}[int("$idx")] = "$value";
+			}
+			else {
+				$config->{"$name"} = "$value";
+			}
+		}
+	}
+	close(*CONFIG);
+}
+
+sub compareVersions($$) {
+	my $a = shift || die("no first version");
+	my $b = shift || die("no second version");
+
+	my @na = split(/\./, $a);
+	my @nb = split(/\./, $b);
+
+	my $m = (@na>@nb) ? @nb : @na;
+
+	for(my $i=0; $i<$m; $i++) {
+		my $cmp = $na[$i] <=> $nb[$i];
+		if ($cmp!=0) {
+			return $cmp;
+		}
+	}
+
+	return 0;
+}
+
+sub getRemovablePackages($@) {
+	my $config = shift;
+	my @removable = ();
+	for(my $i=1; $i<@_; $i++) {
+		if (!$_[$i]->{'current'}) {
+			push @removable, $config->{'KERNEL_PACKAGE'}.'-'.$_[$i]->{'full'};
+			foreach my $addPack (@{$config->{'ADDITIONAL_PACKAGES'}}) {
+				my $ln = $addPack.'-'.$_[$i]->{'full'};
+				my $mn = $addPack.'-'.$_[$i]->{'kversion'}.'-'.$_[$i]->{'release'};
+				my $sn = $addPack.'-'.$_[$i]->{'kversion'};
+				if (system("dpkg-query --show $ln >/dev/null 2>/dev/null")==0) {
+					push @removable, "$ln";
+				}
+				if (system("dpkg-query --show $mn >/dev/null 2>/dev/null")==0) {
+					push @removable, "$mn";
+				}
+				if (system("dpkg-query --show $sn >/dev/null 2>/dev/null")==0) {
+					push @removable, "$sn";
+				}
+			}
+		}
+	}
+	return @removable;
+}
+
+my %cmdlineOptions = ();
+
+parseConfigFile($config{'CONFIG_FILE'}, \%config);
+
+if (!GetOptions('config' => \$cmdlineOptions{'config'},
+		'list' => \$cmdlineOptions{'list'},
+		'rmlist' => \$cmdlineOptions{'rmlist'},
+		'remove' => \$cmdlineOptions{'remove'},
+		'testremove' => \$cmdlineOptions{'testremove'},
+                'version' => \$cmdlineOptions{'version'})) {
+	usage();
+	exit(2);
+}
+
+if ($cmdlineOptions{'version'}) {
+	print VERSION."\n";
+	exit(0);
+}
+
+my %candidates = getInstalledPackages($config{'KERNEL_PACKAGE'}."*");
+
+if (%candidates) {
+
+	my @KERNELS = ();
+	my $currentkernel = `uname -r`;
+	$currentkernel =~ s/\s+$//gi;
+
+	foreach my $k1 (keys %candidates) {
+		foreach my $k2 (keys %{$candidates{$k1}}) {
+			$candidates{$k1}{$k2}{'current'} = ($candidates{$k1}{$k2}{'full'} eq $currentkernel);
+			push @KERNELS, $candidates{$k1}{$k2};
+		}
+	}
+
+	@KERNELS = sort {
+			my $cmpr = $a->{'type'} cmp $b->{'type'};
+			if ($cmpr!=0) {return $cmpr};
+			$cmpr = compareVersions($b->{'kversion'},$a->{'kversion'});
+			if ($cmpr!=0) {return $cmpr};
+			return $b->{'release'} - $a->{'release'};
+		} @KERNELS;
+
+	if ($cmdlineOptions{'config'}) {
+		print Data::Dumper->Dump(
+			[$currentkernel, \%config, \%candidates],
+			[ qw(current_kernel configuration installed_kernels success_stats) ]);
+	}
+	else {
+
+		if ($cmdlineOptions{'list'}) {
+			foreach my $k (@KERNELS) {
+				print $k->{'full'}.($k->{'current'} ? '*' : '')."\n";
+			}
+		}
+		elsif ($cmdlineOptions{'rmlist'}) {
+			my @removable = getRemovablePackages(\%config,@KERNELS);
+			foreach my $k (@removable) {
+				print $k."\n";
+			}
+		}
+		elsif ($cmdlineOptions{'testremove'}) {
+			my @removable = getRemovablePackages(\%config,@KERNELS);
+			if (@removable) {
+				exit(0);
+			}
+			else {
+				exit(1);
+			}
+		}
+		elsif ($cmdlineOptions{'remove'}) {
+			my @removable = getRemovablePackages(\%config,@KERNELS);
+			if (@removable) {
+				foreach my $removable (@removable) {
+					print "removing $removable\n";
+					system('apt-get',
+						'remove',
+						'-f', '-q', '-y',
+						'--purge',
+						$removable);
+				}
+			}
+		}
+		else {
+			foreach my $k (@KERNELS) {
+				print $k->{'full'}.($k->{'current'} ? '*' : '')."\n";
+			}
+		}
+	}
+}
+elsif ($cmdlineOptions{'config'}) {
+	print "no available kernel\n";
+}
+
+exit(0);
+
+__END__
+
