@@ -420,16 +420,25 @@ sub DO_compile(\%) {
 sub DO_install(\%) {
 	print "DO KERNEL-CLEANER INSTALLATION...\n";
 
-	installSBin('src/kernel-cleaner', 'kernel-cleaner');
-	installSBin('src/gkernel-cleaner', 'gkernel-cleaner');
+	installSBin(File::Spec->catfile('src','kernel-cleaner'), 'kernel-cleaner');
+	installSBin(File::Spec->catfile('src','kernel-cleaner-gtk2'), 'kernel-cleaner-gtk2');
+	installSBin(File::Spec->catfile('src','kernel-cleaner-gtk3'), 'kernel-cleaner-gtk3');
 
 	installLink(
-		File::Spec->catfile($SBINDIRECTORY,'gkernel-cleaner'),
+		File::Spec->catfile($SBINDIRECTORY,'kernel-cleaner-gtk2'),
 		File::Spec->catfile($SHAREDIRECTORY,'gnome','autostart'));
+	installLink(
+		File::Spec->catfile($SBINDIRECTORY,'kernel-cleaner-gtk3'),
+		File::Spec->catfile($SHAREDIRECTORY,'gnome','autostart'));
+	installLink(
+		File::Spec->catfile($SBINDIRECTORY,'kernel-cleaner-gtk2'),
+		$SBINDIRECTORY,'gkernel-cleaner');
 
-	install('src/kernelcleaner_yes.png', $ICONDIRECTORY);
-	install('src/kernelcleaner_no.png', $ICONDIRECTORY);
-	install('src/kernelcleaner_rm.png', $ICONDIRECTORY);
+	install(File::Spec->catfile('src','kernelcleaner_yes.png'), $ICONDIRECTORY);
+	install(File::Spec->catfile('src','kernelcleaner_no.png'), $ICONDIRECTORY);
+	install(File::Spec->catfile('src','kernelcleaner_rm.png'), $ICONDIRECTORY);
+
+	installSharedFile(File::Spec->catfile('src','Gtk3','Notify.pm'), File::Spec->catfile('perl5','Gtk3'));
 
 	my @directories = getDirectoryBasenames('po');
 	foreach my $lang (@directories) {

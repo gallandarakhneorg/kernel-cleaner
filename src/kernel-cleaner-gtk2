@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w
 #    GNU Public License (GPL)
 #
-#    Copyright (c) 2010-11 Stéphane GALLAND <galland@arakhne.org>
+#    Copyright (c) 2010-14 Stéphane GALLAND <galland@arakhne.org>
 #
 #    This program is free software; you can redistribute it and/or modify it
 #    under the terms of the GNU General Public License as published by the
@@ -22,8 +22,8 @@ use strict;
 
 #--------------------------------------------------------------
 
-use constant VERSION => '7.0';
-use constant APPNAME => 'gkernel-cleaner';
+use constant VERSION => '8.0';
+use constant APPNAME => 'kernel-cleaner-gtk2';
 
 #--------------------------------------------------------------
 
@@ -33,6 +33,8 @@ use Gtk2::TrayIcon;
 use File::Basename;
 use File::Spec;
 use Getopt::Long;
+
+
 
 #--------------------------------------------------------------
 
@@ -55,12 +57,12 @@ use Locale::gettext;
 {
 	my $LANG_DIRECTORY;
 	my $sourceDir = dirname($0);
-	if (-r File::Spec->catfile($sourceDir, 'po', 'fr', 'LC_MESSAGES', 'gkernel-cleaner.mo')) {
+	if (-r File::Spec->catfile($sourceDir, 'po', 'fr', 'LC_MESSAGES', 'kernel-cleaner-gtk2.mo')) {
 		$LANG_DIRECTORY = File::Spec->rel2abs(File::Spec->catfile($sourceDir, 'po'));
 	}
 	else {
 		$sourceDir = dirname($sourceDir);
-		if (-r File::Spec->catfile($sourceDir, 'po', 'fr', 'LC_MESSAGES', 'gkernel-cleaner.mo')) {
+		if (-r File::Spec->catfile($sourceDir, 'po', 'fr', 'LC_MESSAGES', 'kernel-cleaner-gtk2.mo')) {
 			$LANG_DIRECTORY = File::Spec->rel2abs(File::Spec->catfile($sourceDir, 'po'));
 		}
 		else {

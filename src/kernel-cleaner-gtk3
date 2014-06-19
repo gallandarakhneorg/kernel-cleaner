@@ -1,0 +1,125 @@
+#!/usr/bin/perl -w
+#    GNU Public License (GPL)
+#
+#    Copyright (c) 2014 Stéphane GALLAND <galland@arakhne.org>
+#
+#    This program is free software; you can redistribute it and/or modify it
+#    under the terms of the GNU General Public License as published by the
+#    Free Software Foundation; either version 2 of the License, or (at your
+#    option) any later version.
+#
+#    This program is distributed in the hope that it will be useful, but
+#    WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+#    Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License along
+#    with this program; see the file COPYING. If not, write to the Free
+#    Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+#    02111-1307, USA.
+
+use strict;
+
+#--------------------------------------------------------------
+
+use constant VERSION => '8.0';
+use constant APPNAME => 'kernel-cleaner-gtk3';
+
+#--------------------------------------------------------------
+
+use POSIX qw(setlocale);
+use Locale::gettext;
+use File::Basename;
+use File::Spec;
+
+my $SOURCE_DIRECTORY;
+BEGIN {
+	my $LANG_DIRECTORY;
+	$SOURCE_DIRECTORY = dirname($0);
+	if (-r File::Spec->catfile($SOURCE_DIRECTORY, 'po', 'fr', 'LC_MESSAGES', 'kernel-cleaner-gtk3.mo')) {
+		$LANG_DIRECTORY = File::Spec->rel2abs(File::Spec->catfile($SOURCE_DIRECTORY, 'po'));
+	}
+	else {
+		$SOURCE_DIRECTORY = dirname($SOURCE_DIRECTORY);
+		if (-r File::Spec->catfile($SOURCE_DIRECTORY, 'po', 'fr', 'LC_MESSAGES', 'kernel-cleaner-gtk3.mo')) {
+			$LANG_DIRECTORY = File::Spec->rel2abs(File::Spec->catfile($SOURCE_DIRECTORY, 'po'));
+		}
+		else {
+			$LANG_DIRECTORY = '/usr/share/locale';
+		}
+	}
+	if (-f File::Spec->catfile($SOURCE_DIRECTORY, "Gtk3", "Notify.pm")) {
+		push @INC, $SOURCE_DIRECTORY;
+	}
+	else {
+		push @INC, "/usr/share/perl5";
+	}
+	setlocale(LC_ALL, "");
+	bindtextdomain(APPNAME, $LANG_DIRECTORY);
+	textdomain(APPNAME);
+}
+
+#--------------------------------------------------------------
+
+use Getopt::Long;
+use Gtk3::Notify -init, APPNAME;
+
+use constant FALSE => (0==1);
+use constant CLEANER_CMD => '/usr/sbin/kernel-cleaner';
+use constant CLEANER_CMD2 => File::Spec->catfile($SOURCE_DIRECTORY,'kernel-cleaner');
+
+#--------------------------------------------------------------
+
+my $cleanThread;
+my $icon = undef;
+
+sub _ {
+	return gettext(@_);
+};
+
+sub usage() {
+    print "usage:\n";
+    print "\t".APPNAME." [--version] [--force]\n";
+    exit(1);
+}
+
+#--------------------------------------------------------------
+
+my %cmdlineOptions = ();
+my $removable = FALSE;
+
+if (!GetOptions('force' => \$cmdlineOptions{'force'},
+                'version' => \$cmdlineOptions{'version'})) {
+	usage();
+	exit(2);
+}
+
+if ($cmdlineOptions{'version'}) {
+	print VERSION."\n";
+	exit(0);
+}
+
+my $cmd;
+if (-x CLEANER_CMD2) {
+	$cmd = CLEANER_CMD2;
+}
+else {
+	$cmd = CLEANER_CMD;
+}
+system("$cmd", '--testremove');
+$removable = ($? == 0);
+
+
+if ($removable || $cmdlineOptions{'force'}) {
+
+	my $notification1 = Gtk3::Notify::Notification->new(_("Old operating system kernels are detected"), _("The files associated with the old versions of the Linux kernel will be removed after entering your password."));
+	$notification1->show;
+
+	system('pkexec', CLEANER_CMD, '--remove');
+
+	my $notification2 = Gtk3::Notify::Notification->new(_("Kernels removed"), _("The old Linux kernels were removed for your system."));
+	$notification2->show;
+
+}
+
+exit(0);
