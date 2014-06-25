@@ -22,7 +22,7 @@ use strict;
 
 #--------------------------------------------------------------
 
-use constant VERSION => '8.0';
+use constant VERSION => '8.1';
 use constant APPNAME => 'kernel-cleaner-gtk2';
 
 #--------------------------------------------------------------
@@ -74,7 +74,7 @@ use Locale::gettext;
 	textdomain(APPNAME);
 }
 
-sub _ {
+sub _T {
 	return gettext(@_);
 };
 
@@ -87,7 +87,7 @@ my $removable = FALSE;
 $quitApplet = FALSE;
 
 sub usage() {
-    print "usage:\n";
+    print _T("usage:")."\n";
     print "\t".APPNAME." [--version] [--show]\n";
     exit(1);
 }
@@ -172,13 +172,13 @@ sub onClick {
 			my $menu = Gtk2::Menu->new();
 
 			# Clean menu item
-			my $menu_clean = Gtk2::ImageMenuItem->new_with_label(_("Remove the old kernels of Linux"));
+			my $menu_clean = Gtk2::ImageMenuItem->new_with_label(_T("Remove the old kernels of Linux"));
 			$menu_clean->set_image(Gtk2::Image->new_from_stock('gtk-delete', 'menu'));
 			$menu_clean->signal_connect('activate' => \&cleanKernels);
 			$menu->add($menu_clean);
 
 			# Quit menu item
-			my $menu_quit = Gtk2::ImageMenuItem->new_with_label(_("Exit"));
+			my $menu_quit = Gtk2::ImageMenuItem->new_with_label(_T("Exit"));
 			$menu_quit->set_image(Gtk2::Image->new_from_stock('gtk-close', 'menu'));
 			$menu_quit->signal_connect('activate' => \&quitApplet);
 			$menu->add($menu_quit);

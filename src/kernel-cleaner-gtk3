@@ -22,7 +22,7 @@ use strict;
 
 #--------------------------------------------------------------
 
-use constant VERSION => '8.0';
+use constant VERSION => '8.1';
 use constant APPNAME => 'kernel-cleaner-gtk3';
 
 #--------------------------------------------------------------
@@ -73,12 +73,12 @@ use constant CLEANER_CMD2 => File::Spec->catfile($SOURCE_DIRECTORY,'kernel-clean
 my $cleanThread;
 my $icon = undef;
 
-sub _ {
+sub _T {
 	return gettext(@_);
 };
 
 sub usage() {
-    print "usage:\n";
+    print _T("usage:")."\n";
     print "\t".APPNAME." [--version] [--force]\n";
     exit(1);
 }
@@ -112,12 +112,12 @@ $removable = ($? == 0);
 
 if ($removable || $cmdlineOptions{'force'}) {
 
-	my $notification1 = Gtk3::Notify::Notification->new(_("Old operating system kernels are detected"), _("The files associated with the old versions of the Linux kernel will be removed after entering your password."));
+	my $notification1 = Gtk3::Notify::Notification->new(_T("Old operating system kernels are detected"), _T("The files associated with the old versions of the Linux kernel will be removed after entering your password."));
 	$notification1->show;
 
 	system('pkexec', CLEANER_CMD, '--remove');
 
-	my $notification2 = Gtk3::Notify::Notification->new(_("Kernels removed"), _("The old Linux kernels were removed for your system."));
+	my $notification2 = Gtk3::Notify::Notification->new(_T("Kernels removed"), _T("The old Linux kernels were removed for your system."));
 	$notification2->show;
 
 }

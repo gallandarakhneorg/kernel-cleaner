@@ -20,29 +20,36 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: kernel-cleaner-gtk3 8.0 or higher\n"
-"Report-Msgid-Bugs-To: Stéphane GALLAND <galland@arakhne.org>\n"
-"POT-Creation-Date: 2014-06-09 14:31+0200\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2014-06-25 11:37+0200\n"
 "PO-Revision-Date: 2014-06-09 14:31+0200\n"
 "Last-Translator: Stéphane GALLAND <galland@arakhne.org>\n"
 "Language-Team: FRENCH <galland@arakhne.org>\n"
+"Language: fr\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: ../../../src/kernel-cleaner-gtk3
+#: src/kernel-cleaner-gtk3:81
+msgid "usage:"
+msgstr "usage :"
+
+#: src/kernel-cleaner-gtk3:115
 msgid "Old operating system kernels are detected"
 msgstr "Anciens noyaux du système détectés"
 
-#: ../../../src/kernel-cleaner-gtk3
-msgid "The files associated with the old versions of the Linux kernel will be removed after entering your password."
-msgstr "Les fichiers associés avec les anciennes versions du noyau Linux seront supprimés après avoir entré votre mot-de-passe."
+#: src/kernel-cleaner-gtk3:115
+msgid ""
+"The files associated with the old versions of the Linux kernel will be "
+"removed after entering your password."
+msgstr ""
+"Les fichiers associés avec les anciennes versions du noyau Linux seront "
+"supprimés après avoir entré votre mot-de-passe."
 
-#: ../../../src/kernel-cleaner-gtk3
+#: src/kernel-cleaner-gtk3:120
 msgid "Kernels removed"
 msgstr "Noyaux du système supprimés"
 
-#: ../../../src/kernel-cleaner-gtk3
+#: src/kernel-cleaner-gtk3:120
 msgid "The old Linux kernels were removed for your system."
 msgstr "Les anciens noyaux Linux ont été supprimés de votre système."
-
-
