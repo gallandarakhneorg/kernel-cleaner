@@ -2,10 +2,11 @@ package Gtk3::Notify;
 
 use strict;
 use warnings;
+use utf8;
 use Glib::Object::Introspection;
 use Gtk3;
 
-our $VERSION = '0.01';
+our $VERSION = '0.04';
 
 sub import {
     my $class = shift;

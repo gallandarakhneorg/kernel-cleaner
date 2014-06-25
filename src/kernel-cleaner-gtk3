@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
 #    GNU Public License (GPL)
 #
 #    Copyright (c) 2014 Stéphane GALLAND <galland@arakhne.org>
@@ -18,11 +18,14 @@
 #    Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 #    02111-1307, USA.
 
+require 5.014;
+
 use strict;
+use utf8;
 
 #--------------------------------------------------------------
 
-use constant VERSION => '8.1';
+use constant VERSION => '8.2';
 use constant APPNAME => 'kernel-cleaner-gtk3';
 
 #--------------------------------------------------------------
@@ -49,13 +52,10 @@ BEGIN {
 		}
 	}
 	if (-f File::Spec->catfile($SOURCE_DIRECTORY, "Gtk3", "Notify.pm")) {
-		push @INC, $SOURCE_DIRECTORY;
+		unshift @INC, $SOURCE_DIRECTORY;
 	}
-	else {
-		push @INC, "/usr/share/perl5";
-	}
-	setlocale(LC_ALL, "");
 	bindtextdomain(APPNAME, $LANG_DIRECTORY);
+	bind_textdomain_codeset(APPNAME, 'UTF-8');
 	textdomain(APPNAME);
 }
 
@@ -77,10 +77,25 @@ sub _T {
 	return gettext(@_);
 };
 
+sub _GTK($) {
+	if (!Encode::is_utf8($_[0])) {
+		return Encode::decode('UTF-8', $_[0]);
+	}
+	return $_[0];
+}
+
 sub usage() {
     print _T("usage:")."\n";
     print "\t".APPNAME." [--version] [--force]\n";
     exit(1);
+}
+
+sub notify($$) {
+	my $title = shift || '';
+	my $text = shift || '';
+	print "$title\n";
+	my $notification = Gtk3::Notify::Notification->new(_GTK($title), _GTK($text));
+	$notification->show;
 }
 
 #--------------------------------------------------------------
@@ -112,14 +127,15 @@ $removable = ($? == 0);
 
 if ($removable || $cmdlineOptions{'force'}) {
 
-	my $notification1 = Gtk3::Notify::Notification->new(_T("Old operating system kernels are detected"), _T("The files associated with the old versions of the Linux kernel will be removed after entering your password."));
-	$notification1->show;
+	notify(
+		_T("Old operating system kernels are detected"),
+		_T("The files associated with the old versions of the Linux kernel will be removed after entering your password."));
 
-	system('pkexec', CLEANER_CMD, '--remove');
-
-	my $notification2 = Gtk3::Notify::Notification->new(_T("Kernels removed"), _T("The old Linux kernels were removed for your system."));
-	$notification2->show;
-
+	if (system('pkexec', CLEANER_CMD, '--remove')==0) {
+		notify(
+			_T("Kernels removed"),
+			_T("The old Linux kernels were removed for your system."));
+	}
 }
 
 exit(0);

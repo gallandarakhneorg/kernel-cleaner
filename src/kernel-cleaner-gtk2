@@ -22,7 +22,7 @@ use strict;
 
 #--------------------------------------------------------------
 
-use constant VERSION => '8.1';
+use constant VERSION => '8.2';
 use constant APPNAME => 'kernel-cleaner-gtk2';
 
 #--------------------------------------------------------------
